@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Receive Money – SecurePay</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 20px 10px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      color: white;
+      text-decoration: none;
+      font-size: 1.2rem;
+    }
+    .receive-card {
+      max-width: 400px;
+      margin: 30px auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 30px 24px;
+      text-align: center;
+    }
+    .qr-box {
+      width: 220px;
+      height: 220px;
+      margin: 0 auto 24px;
+      background: white;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .qr-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .upi-box {
+      background: rgba(0, 208, 156, 0.1);
+      border: 1px solid rgba(0, 208, 156, 0.3);
+      border-radius: 12px;
+      padding: 14px;
+      margin: 20px 0;
+      font-size: 1.15rem;
+      font-weight: 600;
+      word-break: break-all;
+    }
+    .copy-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .copy-btn:active {
+      transform: scale(0.97);
+    }
+  </style>
+</head>
+<body>
+  <div class="container" style="padding-bottom: 40px;">
+
+    <div class="page-header">
+      <a href="dashboard.html" class="back-btn">←</a>
+      <div>
+        <div style="font-weight:700; font-size:1.2rem;">Receive Money</div>
+        <div style="font-size:0.85rem; color:var(--text-secondary);">Share your UPI ID or QR</div>
+      </div>
+    </div>
+
+    <div class="receive-card">
+      <div class="qr-box" id="qrBox">
+        <span style="color:#666; font-size:0.9rem;">Loading QR...</span>
+      </div>
+
+      <div style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:8px;">Your UPI ID</div>
+      <div class="upi-box" id="upiId">Loading...</div>
+
+      <button class="copy-btn" onclick="copyUpi()">Copy UPI ID</button>
+
+      <div style="margin-top:24px; font-size:0.85rem; color:var(--text-secondary); line-height:1.5;">
+        Share this UPI ID or show the QR code to receive money instantly.
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { auth, db } from './js/firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    let currentUpi = '';
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        currentUpi = data.upiId || (data.mobile + '@securepay');
+        
+        document.getElementById('upiId').textContent = currentUpi;
+
+        // Generate QR Code using free API
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(currentUpi)}`;
+        document.getElementById('qrBox').innerHTML = `<img src="${qrUrl}" alt="UPI QR Code">`;
+      }
+    });
+
+    window.copyUpi = function() {
+      navigator.clipboard.writeText(currentUpi).then(() => {
+        alert('UPI ID copied to clipboard!');
+      }).catch(() => {
+        alert('Could not copy. Please copy manually.');
+      });
+    }
+  </script>
+</body>
+</html>

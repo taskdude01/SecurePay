@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Scan QR – SecurePay</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  
+  <!-- QR Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    .scan-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      color: white;
+      text-decoration: none;
+      font-size: 1.2rem;
+    }
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .scan-container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 20px 40px;
+      text-align: center;
+    }
+    .result-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      margin-top: 24px;
+      text-align: left;
+      display: none;
+    }
+    .result-card.show {
+      display: block;
+    }
+    .receiver-name {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .receiver-upi {
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.95rem;
+    }
+    .info-row:last-child {
+      border-bottom: none;
+    }
+    .pay-section {
+      margin-top: 20px;
+    }
+    .pay-section input {
+      width: 100%;
+      padding: 16px;
+      background: #0F172A;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      color: white;
+      font-size: 1.2rem;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="scan-header">
+    <a href="dashboard.html" class="back-btn">←</a>
+    <div>
+      <div style="font-weight:700; font-size:1.2rem;">Scan any QR</div>
+      <div style="font-size:0.85rem; color:var(--text-secondary);">Pay by scanning QR code</div>
+    </div>
+  </div>
+
+  <div class="scan-container">
+    <!-- Camera Scanner -->
+    <div id="reader"></div>
+
+    <p style="color:var(--text-secondary); margin:16px 0; font-size:0.9rem;">
+      Point your camera at a UPI QR code
+    </p>
+
+    <!-- Manual Demo Button (for testing without QR) -->
+    <button onclick="simulateScan()" class="btn btn-outline" style="margin-bottom:20px;">
+      Demo: Simulate QR Scan
+    </button>
+
+    <!-- Result after scanning -->
+    <div class="result-card" id="resultCard">
+      <div class="receiver-name" id="receiverName">Receiver Name</div>
+      <div class="receiver-upi" id="receiverUpi">name@upi</div>
+
+      <div class="info-row">
+        <span>UPI ID</span>
+        <span id="infoUpi">-</span>
+      </div>
+      <div class="info-row">
+        <span>Bank</span>
+        <span id="infoBank">SecurePay Bank</span>
+      </div>
+      <div class="info-row">
+        <span>Account Type</span>
+        <span>Savings</span>
+      </div>
+
+      <div class="pay-section">
+        <input type="number" id="amountInput" placeholder="Enter Amount (₹)" />
+        <button onclick="payScanned()" class="btn btn-primary btn-full">
+          Pay Securely
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let scannedData = null;
+
+    // Start camera scanner
+    function startScanner() {
+      const html5QrCode = new Html5Qrcode("reader");
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          // QR Code detected
+          handleScannedQR(decodedText);
+          html5QrCode.stop();
+        },
+        (error) => {
+          // ignore scan errors
+        }
+      ).catch(err => {
+        console.log("Camera error:", err);
+        document.getElementById('reader').innerHTML = `
+          <div style="padding:40px; background:var(--card); border-radius:20px; color:var(--text-secondary);">
+            Camera not available or permission denied.<br><br>
+            Use the Demo button below for testing.
+          </div>
+        `;
+      });
+    }
+
+    // Handle scanned data
+    function handleScannedQR(data) {
+      console.log("Scanned:", data);
+      scannedData = data;
+
+      // Try to extract UPI info
+      let name = "Unknown User";
+      let upi = data;
+
+      // Basic UPI QR parsing
+      if (data.includes("pa=")) {
+        const urlParams = new URLSearchParams(data.split('?')[1] || data);
+        upi = urlParams.get('pa') || data;
+        name = urlParams.get('pn') || "UPI User";
+        name = decodeURIComponent(name);
+      }
+
+      // Show result
+      document.getElementById('receiverName').textContent = name;
+      document.getElementById('receiverUpi').textContent = upi;
+      document.getElementById('infoUpi').textContent = upi;
+      document.getElementById('resultCard').classList.add('show');
+    }
+
+    // Demo simulation (for testing without real QR)
+    function simulateScan() {
+      handleScannedQR("upi://pay?pa=shraddha@securepay&pn=Shraddha%20Tiwari&cu=INR");
+    }
+
+    // Pay after scanning
+    function payScanned() {
+      const amount = document.getElementById('amountInput').value;
+      if (!amount || amount <= 0) {
+        alert("Please enter a valid amount");
+        return;
+      }
+
+      const name = document.getElementById('receiverName').textContent;
+      const upi = document.getElementById('receiverUpi').textContent;
+
+      alert(`Demo Payment Successful!\n\nTo: ${name}\nUPI: ${upi}\nAmount: ₹${amount}\n\nBackend + Hash Chain will be added later.`);
+      
+      // Optional: redirect to chat
+      // window.location.href = `chat.html?name=${encodeURIComponent(name)}&number=${encodeURIComponent(upi)}`;
+    }
+
+    // Start scanner when page loads
+    window.onload = startScanner;
+  </script>
+</body>
+</html>

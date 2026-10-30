@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Scratch & Win – SecurePay</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 20px 10px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      color: white;
+      text-decoration: none;
+      font-size: 1.2rem;
+    }
+    .scratch-card {
+      background: linear-gradient(135deg, #7C3AED, #A855F7);
+      border-radius: 24px;
+      padding: 32px 24px;
+      margin: 20px auto;
+      max-width: 440px;
+      text-align: center;
+      color: white;
+    }
+    .scratch-area {
+      width: 220px;
+      height: 120px;
+      background: #E2E8F0;
+      border-radius: 16px;
+      margin: 24px auto;
+      display: grid;
+      place-items: center;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #1E293B;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    }
+    .scratch-area.scratched {
+      background: linear-gradient(135deg, #00D09C, #00B386);
+      color: white;
+    }
+    .referral-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      margin: 20px auto;
+      max-width: 440px;
+    }
+    .referral-code {
+      background: #0F172A;
+      border: 1.5px dashed #00D09C;
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #00D09C;
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" style="padding-bottom: 40px;">
+
+    <div class="page-header">
+      <a href="dashboard.html" class="back-btn">←</a>
+      <div>
+        <div style="font-weight:700; font-size:1.2rem;">Scratch & Win</div>
+        <div style="font-size:0.85rem; color:var(--text-secondary);">Win up to ₹1000</div>
+      </div>
+    </div>
+
+    <!-- Scratch Card -->
+    <div class="scratch-card">
+      <h2>Scratch & Win</h2>
+      <p style="opacity:0.9; margin-top:6px;">Pay any bill today to unlock your reward</p>
+
+      <div class="scratch-area" id="scratchArea" onclick="scratchNow()">
+        Scratch Here
+      </div>
+
+      <p style="font-size:0.85rem; opacity:0.85;" id="scratchMsg">
+        Click the card to scratch
+      </p>
+    </div>
+
+    <!-- Referral Section -->
+    <div class="referral-box">
+      <h3 style="margin-bottom:6px;">Refer & Earn</h3>
+      <p style="color:var(--text-secondary); font-size:0.9rem;">
+        Share your code with friends. You both get ₹50 when they make their first payment.
+      </p>
+
+      <div class="referral-code" id="referralCode">YASH50</div>
+
+      <button onclick="copyCode()" class="btn btn-primary btn-full">
+        Copy Referral Code
+      </button>
+
+      <p style="text-align:center; margin-top:14px; font-size:0.85rem; color:var(--text-secondary);">
+        Total Referrals: <strong id="referralCount">0</strong>
+      </p>
+    </div>
+
+  </div>
+
+  <script>
+    const prizes = ['₹10', '₹25', '₹50', '₹100', 'Better Luck Next Time', '₹20', '₹75'];
+
+    function scratchNow() {
+      const area = document.getElementById('scratchArea');
+      if (area.classList.contains('scratched')) return;
+
+      const prize = prizes[Math.floor(Math.random() * prizes.length)];
+      area.textContent = prize;
+      area.classList.add('scratched');
+
+      if (prize.includes('₹')) {
+        document.getElementById('scratchMsg').textContent = `Congratulations! You won ${prize}`;
+      } else {
+        document.getElementById('scratchMsg').textContent = 'Try again after your next bill payment';
+      }
+    }
+
+    function copyCode() {
+      const code = document.getElementById('referralCode').textContent;
+      navigator.clipboard.writeText(code);
+      alert('Referral code copied: ' + code);
+    }
+  </script>
+</body>
+</html>

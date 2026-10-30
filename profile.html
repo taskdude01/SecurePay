@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Profile – SecurePay</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .profile-header {
+      text-align: center;
+      padding: 40px 20px 30px;
+    }
+    .profile-avatar {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00D09C, #00a87a);
+      display: grid;
+      place-items: center;
+      font-size: 2rem;
+      font-weight: 700;
+      color: white;
+      margin: 0 auto 16px;
+    }
+    .profile-name {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .profile-upi {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+    .info-card {
+      max-width: 440px;
+      margin: 0 auto 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .info-row:last-child {
+      border-bottom: none;
+    }
+    .info-label {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    .info-value {
+      font-weight: 600;
+    }
+    .logout-btn {
+      display: block;
+      max-width: 440px;
+      margin: 30px auto;
+      padding: 16px;
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 14px;
+      text-align: center;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" style="padding-bottom: 40px;">
+
+    <div class="page-header" style="display:flex; align-items:center; gap:16px; padding:20px;">
+      <a href="dashboard.html" class="back-btn" style="width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:grid;place-items:center;color:white;text-decoration:none;font-size:1.2rem;">←</a>
+      <div style="font-weight:700; font-size:1.2rem;">Profile</div>
+    </div>
+
+    <div class="profile-header">
+      <div class="profile-avatar" id="profileAvatar">--</div>
+      <div class="profile-name" id="profileName">Loading...</div>
+      <div class="profile-upi" id="profileUpi">--</div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-row">
+        <div class="info-label">Full Name</div>
+        <div class="info-value" id="infoName">--</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Email</div>
+        <div class="info-value" id="infoEmail">--</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Mobile</div>
+        <div class="info-value" id="infoMobile">--</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">UPI ID</div>
+        <div class="info-value" id="infoUpi">--</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Balance</div>
+        <div class="info-value" id="infoBalance">--</div>
+      </div>
+    </div>
+
+    <div class="logout-btn" onclick="logout()">Logout</div>
+
+  </div>
+
+  <script type="module">
+    import { auth, db } from './js/firebase.js';
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+
+        document.getElementById('profileName').textContent = data.name || 'User';
+        document.getElementById('profileUpi').textContent = data.upiId || '';
+
+        const initials = (data.name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+        document.getElementById('profileAvatar').textContent = initials;
+
+        document.getElementById('infoName').textContent = data.name || '--';
+        document.getElementById('infoEmail').textContent = data.email || user.email || '--';
+        document.getElementById('infoMobile').textContent = data.mobile || '--';
+        document.getElementById('infoUpi').textContent = data.upiId || '--';
+        document.getElementById('infoBalance').textContent = 
+          '₹' + (data.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+      }
+    });
+
+    window.logout = async function() {
+      await signOut(auth);
+      window.location.href = 'login.html';
+    }
+  </script>
+</body>
+</html>

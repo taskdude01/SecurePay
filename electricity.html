@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Electricity Bill – SecurePay</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .page-header { display: flex; align-items: center; gap: 16px; padding: 20px 20px 10px; max-width: 480px; margin: 0 auto; }
+    .back-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--card); border: 1px solid var(--border); display: grid; place-items: center; color: white; text-decoration: none; font-size: 1.2rem; }
+    .form-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; margin: 20px auto; max-width: 440px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 7px; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 14px 16px; background: #0F172A; border: 1.5px solid var(--border); border-radius: 12px; color: white; font-size: 1rem; }
+    .form-group textarea { height: 80px; resize: none; }
+    .bill-summary { background: #0F172A; border-radius: 14px; padding: 16px; margin-top: 10px; }
+    .summary-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; }
+    .summary-row.total { font-weight: 700; font-size: 1.1rem; color: #00D09C; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
+    .balance-info { background: rgba(0, 208, 156, 0.1); border: 1px solid rgba(0, 208, 156, 0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <div class="container" style="padding-bottom: 40px;">
+    <div class="page-header">
+      <a href="dashboard.html" class="back-btn">←</a>
+      <div>
+        <div style="font-weight:700; font-size:1.2rem;">Electricity Bill</div>
+        <div style="font-size:0.85rem; color:var(--text-secondary);">Pay your electricity bill</div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="balance-info">
+        Available Balance: <strong id="availableBalance">Loading...</strong>
+      </div>
+
+      <div class="form-group">
+        <label>Consumer / Account Number</label>
+        <input type="text" id="consumerNo" placeholder="Enter consumer number" />
+      </div>
+
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="fullName" placeholder="Name as on bill" />
+      </div>
+
+      <div class="form-group">
+        <label>Permanent Address</label>
+        <textarea id="address" placeholder="House No, Street, Area, City, Pincode"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Select Board / Provider</label>
+        <select id="board">
+          <option value="">Choose Electricity Board</option>
+          <option>Adani Electricity</option>
+          <option>Tata Power</option>
+          <option>BSES Rajdhani</option>
+          <option>BSES Yamuna</option>
+          <option>MSEB (Maharashtra)</option>
+          <option>UPPCL (Uttar Pradesh)</option>
+          <option>PSPCL (Punjab)</option>
+          <option>Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Bill Amount (₹)</label>
+        <input type="number" id="amount" placeholder="Enter bill amount" />
+      </div>
+
+      <div class="bill-summary">
+        <div class="summary-row">
+          <span>Bill Amount</span>
+          <span id="showAmount">₹0</span>
+        </div>
+        <div class="summary-row">
+          <span>Convenience Fee</span>
+          <span>₹0</span>
+        </div>
+        <div class="summary-row total">
+          <span>Total Payable</span>
+          <span id="totalAmount">₹0</span>
+        </div>
+      </div>
+
+      <button id="payBtn" onclick="payElectricity()" class="btn btn-primary btn-full" style="margin-top:20px;">
+        Pay Electricity Bill
+      </button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from './js/firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { doc, getDoc, updateDoc, collection, addDoc, query, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    let currentUser = null;
+    let currentUserData = null;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      currentUser = user;
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        currentUserData = userDoc.data();
+        document.getElementById('availableBalance').textContent =
+          '₹' + (currentUserData.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+      }
+    });
+
+    document.getElementById('amount').addEventListener('input', function() {
+      const val = this.value || 0;
+      document.getElementById('showAmount').textContent = '₹' + val;
+      document.getElementById('totalAmount').textContent = '₹' + val;
+    });
+
+    async function createAuditEntry(txData) {
+      try {
+        const ledgerRef = collection(db, "auditLedger");
+        const lastQuery = query(ledgerRef, orderBy("index", "desc"));
+        const lastSnap = await getDocs(lastQuery);
+
+        let previousHash = "0000000000000000000000000000000000000000000000000000000000000000";
+        let nextIndex = 1;
+
+        if (!lastSnap.empty) {
+          const lastDoc = lastSnap.docs[0].data();
+          previousHash = lastDoc.currentHash;
+          nextIndex = lastDoc.index + 1;
+        }
+
+        const dataToHash = previousHash + txData.transactionId + txData.fromUserId +
+                           (txData.toUserId || '') + txData.amount + (txData.note || '') + new Date().toISOString();
+
+        const encoder = new TextEncoder();
+        const data = encoder.encode(dataToHash);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const currentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        await addDoc(ledgerRef, {
+          index: nextIndex,
+          transactionId: txData.transactionId,
+          fromName: txData.fromName,
+          toName: txData.toName || 'Electricity Bill',
+          amount: txData.amount,
+          note: txData.note || '',
+          previousHash,
+          currentHash,
+          timestamp: new Date().toISOString(),
+          createdAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.error("Audit error:", e);
+      }
+    }
+
+    window.payElectricity = async function() {
+      const consumerNo = document.getElementById('consumerNo').value.trim();
+      const name = document.getElementById('fullName').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const board = document.getElementById('board').value;
+      const amount = Number(document.getElementById('amount').value);
+      const btn = document.getElementById('payBtn');
+
+      if (!consumerNo || !name || !address || !board || !amount) {
+        return alert('Please fill all fields');
+      }
+      if (amount > (currentUserData?.balance || 0)) {
+        return alert('Insufficient balance');
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+
+      try {
+        const newBalance = currentUserData.balance - amount;
+        await updateDoc(doc(db, "users", currentUser.uid), { balance: newBalance });
+
+        const txRef = await addDoc(collection(db, "transactions"), {
+          fromUserId: currentUser.uid,
+          fromName: currentUserData.name,
+          fromMobile: currentUserData.mobile,
+          toUserId: null,
+          toName: board,
+          toMobile: consumerNo,
+          amount: amount,
+          note: `Electricity Bill - ${board} - ${consumerNo}`,
+          type: 'bill',
+          status: 'success',
+          timestamp: serverTimestamp(),
+          createdAt: new Date().toISOString()
+        });
+
+        await createAuditEntry({
+          transactionId: txRef.id,
+          fromUserId: currentUser.uid,
+          fromName: currentUserData.name,
+          toName: board,
+          amount: amount,
+          note: `Electricity Bill - ${board}`
+        });
+
+        alert(`Electricity Bill Paid Successfully!\n\nConsumer: ${consumerNo}\nBoard: ${board}\nAmount: ₹${amount}`);
+        window.location.href = 'dashboard.html';
+
+      } catch (error) {
+        console.error(error);
+        alert('Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Pay Electricity Bill';
+      }
+    }
+  </script>
+</body>
+</html>

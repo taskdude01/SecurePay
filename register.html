@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Create Account – SecurePay</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="auth-body">
+  <div class="auth-wrapper">
+    <div class="auth-logo">
+      <div class="logo-circle">S</div>
+      <h1>SecurePay</h1>
+    </div>
+
+    <div class="auth-card">
+      <h2>Create Account</h2>
+      <p class="auth-sub">Join SecurePay in a few steps</p>
+
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="fullName" placeholder="Enter your full name" required />
+      </div>
+
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="email" placeholder="Enter your email" required />
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Minimum 6 characters" required />
+      </div>
+
+      <div class="form-group">
+        <label>Mobile Number</label>
+        <input type="tel" id="mobile" placeholder="10-digit mobile number" maxlength="10" required />
+      </div>
+
+      <button class="btn btn-primary btn-full" id="registerBtn" onclick="registerUser()">
+        Create Account
+      </button>
+
+      <p class="auth-footer-text" style="margin-top:20px;">
+        Already have an account? <a href="login.html" style="color:var(--primary);">Login</a>
+      </p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from './js/firebase.js';
+    import { createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { doc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    window.registerUser = async function() {
+      const name = document.getElementById('fullName').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const mobile = document.getElementById('mobile').value.trim();
+      const btn = document.getElementById('registerBtn');
+
+      if (!name || !email || !password || mobile.length !== 10) {
+        alert('Please fill all fields correctly');
+        return;
+      }
+
+      if (password.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Creating Account...';
+
+      try {
+        // Create user in Firebase Authentication
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Update display name
+        await updateProfile(user, { displayName: name });
+
+        // Save user data in Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          name: name,
+          email: email,
+          mobile: mobile,
+          balance: 10000,                // Starting bonus
+          upiId: mobile + "@securepay",
+          createdAt: new Date().toISOString()
+        });
+
+        alert('Account created successfully!');
+        window.location.href = 'dashboard.html';
+
+      } catch (error) {
+        console.error(error);
+        
+        let message = error.message;
+        if (error.code === 'auth/email-already-in-use') {
+          message = 'This email is already registered. Please login instead.';
+        } else if (error.code === 'auth/weak-password') {
+          message = 'Password is too weak. Use at least 6 characters.';
+        } else if (error.code === 'auth/invalid-email') {
+          message = 'Please enter a valid email address.';
+        }
+        
+        alert(message);
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    }
+  </script>
+</body>
+</html>

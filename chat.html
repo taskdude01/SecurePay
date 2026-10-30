@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Chat – SecurePay</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    body {
+      background: #0B0F19;
+    }
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px;
+      background: #151B2B;
+      border-bottom: 1px solid #1E293B;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .back-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #1C2438;
+      display: grid;
+      place-items: center;
+      color: white;
+      text-decoration: none;
+      font-size: 1.1rem;
+    }
+    .chat-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      color: white;
+      font-size: 1rem;
+    }
+    .chat-user-info h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .chat-user-info p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    .chat-body {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px 16px 140px;
+      min-height: 70vh;
+    }
+    .message {
+      max-width: 75%;
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    .message.received {
+      background: #1C2438;
+      border-bottom-left-radius: 4px;
+    }
+    .message.sent {
+      background: linear-gradient(135deg, #00D09C, #00B386);
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+      color: white;
+    }
+    .message .time {
+      font-size: 0.7rem;
+      opacity: 0.7;
+      margin-top: 4px;
+      text-align: right;
+    }
+    .amount-bubble {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin: 4px 0;
+    }
+    .chat-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #151B2B;
+      border-top: 1px solid #1E293B;
+      padding: 16px 20px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .pay-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #00D09C, #00B386);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .empty-chat {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="chat-header">
+    <a href="send-money.html" class="back-btn">←</a>
+    <div class="chat-avatar" id="avatar" style="background:#3B82F6;">ST</div>
+    <div class="chat-user-info">
+      <h3 id="contactName">Loading...</h3>
+      <p id="contactNumber">-</p>
+    </div>
+  </div>
+
+  <!-- Chat Body -->
+  <div class="chat-body" id="chatBody">
+    <div class="empty-chat">
+      <p>No previous transactions</p>
+      <p style="font-size:0.85rem; margin-top:6px;">Send money to start the conversation</p>
+    </div>
+  </div>
+
+  <!-- Footer Pay Button -->
+  <div class="chat-footer">
+    <button class="pay-btn" onclick="startPayment()">Pay</button>
+  </div>
+
+  <script>
+    // Get contact details from URL
+    const params = new URLSearchParams(window.location.search);
+    const name = params.get('name') || 'Unknown';
+    const number = params.get('number') || '';
+
+    // Show contact info
+    document.getElementById('contactName').textContent = name;
+    document.getElementById('contactNumber').textContent = number;
+    
+    // Set avatar initials + color
+    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+    document.getElementById('avatar').textContent = initials;
+
+    const colors = ['#3B82F6', '#EC4899', '#06B6D4', '#10B981', '#F59E0B', '#8B5CF6'];
+    const colorIndex = name.length % colors.length;
+    document.getElementById('avatar').style.background = colors[colorIndex];
+
+    // Load previous messages (demo)
+    function loadChat() {
+      const chats = JSON.parse(localStorage.getItem('securepay_chats') || '{}');
+      const messages = chats[number] || [];
+
+      const chatBody = document.getElementById('chatBody');
+      
+      if (messages.length === 0) {
+        return; // keep empty state
+      }
+
+      chatBody.innerHTML = '';
+      messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `message ${msg.type}`;
+        div.innerHTML = `
+          <div class="amount-bubble">₹${msg.amount}</div>
+          <div>${msg.note || (msg.type === 'sent' ? 'You paid' : 'Received')}</div>
+          <div class="time">${msg.time}</div>
+        `;
+        chatBody.appendChild(div);
+      });
+
+      // Scroll to bottom
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function startPayment() {
+      const amount = prompt(`Enter amount to pay ${name}`);
+      if (!amount || isNaN(amount) || amount <= 0) return;
+
+      const note = prompt('Add a note (optional)') || 'Payment';
+
+      // Save to chat
+      const chats = JSON.parse(localStorage.getItem('securepay_chats') || '{}');
+      if (!chats[number]) chats[number] = [];
+
+      const now = new Date();
+      const time = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+      chats[number].push({
+        type: 'sent',
+        amount: amount,
+        note: note,
+        time: time
+      });
+
+      localStorage.setItem('securepay_chats', JSON.stringify(chats));
+
+      // Show success and reload chat
+      alert(`₹${amount} paid to ${name} successfully! (Demo)`);
+      loadChat();
+    }
+
+    // Load chat when page opens
+    loadChat();
+  </script>
+</body>
+</html>

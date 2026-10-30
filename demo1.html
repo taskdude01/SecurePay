@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Credit Card Bill – SecurePay</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 20px 10px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      color: white;
+      text-decoration: none;
+      font-size: 1.2rem;
+    }
+    .form-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      margin: 20px auto;
+      max-width: 440px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 7px;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 14px 16px;
+      background: #0F172A;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      color: white;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" style="padding-bottom: 40px;">
+
+    <div class="page-header">
+      <a href="dashboard.html" class="back-btn">←</a>
+      <div>
+        <div style="font-weight:700; font-size:1.2rem;">Credit Card Bill</div>
+        <div style="font-size:0.85rem; color:var(--text-secondary);">Pay your credit card bill</div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="form-group">
+        <label>Select Bank</label>
+        <select id="bank">
+          <option value="">Choose Bank</option>
+          <option>HDFC Bank</option>
+          <option>ICICI Bank</option>
+          <option>SBI Card</option>
+          <option>Axis Bank</option>
+          <option>Kotak Mahindra Bank</option>
+          <option>Yes Bank</option>
+          <option>Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Credit Card Number (Last 4 digits)</label>
+        <input type="text" id="cardNumber" placeholder="XXXX" maxlength="4" />
+      </div>
+
+      <div class="form-group">
+        <label>Card Holder Name</label>
+        <input type="text" id="cardName" placeholder="Name on card" />
+      </div>
+
+      <div class="form-group">
+        <label>Bill Amount (₹)</label>
+        <input type="number" id="amount" placeholder="Enter amount" />
+      </div>
+
+      <button onclick="payCreditCard()" class="btn btn-primary btn-full">
+        Pay Credit Card Bill
+      </button>
+    </div>
+  </div>
+
+  <script>
+    function payCreditCard() {
+      const bank = document.getElementById('bank').value;
+      const cardNumber = document.getElementById('cardNumber').value.trim();
+      const cardName = document.getElementById('cardName').value.trim();
+      const amount = document.getElementById('amount').value;
+
+      if (!bank || cardNumber.length !== 4 || !cardName || !amount) {
+        alert('Please fill all fields correctly');
+        return;
+      }
+
+      alert(`Credit Card Bill Paid Successfully!\n\nBank: ${bank}\nCard: XXXX-${cardNumber}\nName: ${cardName}\nAmount: ₹${amount}\n\n(Demo payment)`);
+    }
+  </script>
+</body>
+</html>

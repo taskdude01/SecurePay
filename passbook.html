@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>History – SecurePay</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 20px 10px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      color: white;
+      text-decoration: none;
+      font-size: 1.2rem;
+    }
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      padding: 0 20px 16px;
+      max-width: 480px;
+      margin: 0 auto;
+      overflow-x: auto;
+    }
+    .filter-btn {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .filter-btn.active {
+      background: #00D09C;
+      color: white;
+      border-color: #00D09C;
+    }
+    .tx-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px;
+      max-width: 480px;
+      margin: 0 auto;
+      border-bottom: 1px solid var(--border);
+    }
+    .tx-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      color: white;
+      font-size: 0.95rem;
+    }
+    .tx-info {
+      flex: 1;
+    }
+    .tx-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .tx-meta {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .tx-amount {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .tx-amount.debit {
+      color: #FF4D4F;
+    }
+    .tx-amount.credit {
+      color: #00D09C;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container" style="padding-bottom: 40px;">
+
+    <!-- Header -->
+    <div class="page-header">
+      <a href="dashboard.html" class="back-btn">←</a>
+      <div>
+        <div style="font-weight:700; font-size:1.2rem;">Transaction History</div>
+        <div style="font-size:0.85rem; color:var(--text-secondary);">All your payments</div>
+      </div>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="filter-bar">
+      <div class="filter-btn active" data-filter="all">All</div>
+      <div class="filter-btn" data-filter="sent">Sent</div>
+      <div class="filter-btn" data-filter="received">Received</div>
+    </div>
+
+    <!-- Transactions List -->
+    <div id="txList">
+      <div class="loading">Loading transactions...</div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { auth, db } from './js/firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { 
+      collection, query, where, getDocs, orderBy 
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    let allTransactions = [];
+    let currentUserId = null;
+
+    // Load transactions when user is logged in
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      currentUserId = user.uid;
+      await loadTransactions();
+    });
+
+    async function loadTransactions() {
+      const container = document.getElementById('txList');
+      container.innerHTML = `<div class="loading">Loading transactions...</div>`;
+
+      try {
+        // Get all transactions where user is sender OR receiver
+        const q1 = query(
+          collection(db, "transactions"),
+          where("fromUserId", "==", currentUserId)
+        );
+        const q2 = query(
+          collection(db, "transactions"),
+          where("toUserId", "==", currentUserId)
+        );
+
+        const [sentSnap, receivedSnap] = await Promise.all([
+          getDocs(q1),
+          getDocs(q2)
+        ]);
+
+        allTransactions = [];
+
+        // Sent transactions
+        sentSnap.forEach(doc => {
+          const data = doc.data();
+          allTransactions.push({
+            id: doc.id,
+            ...data,
+            direction: 'sent'
+          });
+        });
+
+        // Received transactions
+        receivedSnap.forEach(doc => {
+          const data = doc.data();
+          allTransactions.push({
+            id: doc.id,
+            ...data,
+            direction: 'received'
+          });
+        });
+
+        // Sort by newest first
+        allTransactions.sort((a, b) => {
+          const timeA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+          const timeB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+          return timeB - timeA;
+        });
+
+        renderTransactions('all');
+
+      } catch (error) {
+        console.error("Error loading transactions:", error);
+        container.innerHTML = `
+          <div class="empty-state">
+            <p>Failed to load transactions</p>
+            <p style="font-size:0.85rem; margin-top:8px;">Please try again later</p>
+          </div>
+        `;
+      }
+    }
+
+    function renderTransactions(filter = 'all') {
+      const container = document.getElementById('txList');
+
+      let filtered = allTransactions;
+      if (filter === 'sent') {
+        filtered = allTransactions.filter(t => t.direction === 'sent');
+      } else if (filter === 'received') {
+        filtered = allTransactions.filter(t => t.direction === 'received');
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <p>No transactions yet</p>
+            <p style="font-size:0.85rem; margin-top:8px;">Your payment history will appear here</p>
+          </div>
+        `;
+        return;
+      }
+
+      const colors = ['#3B82F6', '#EC4899', '#06B6D4', '#10B981', '#F59E0B', '#8B5CF6'];
+
+      container.innerHTML = '';
+
+      filtered.forEach((tx, index) => {
+        const color = colors[index % colors.length];
+        const isSent = tx.direction === 'sent';
+
+        const displayName = isSent ? tx.toName : tx.fromName;
+        const initials = (displayName || 'NA').toString().split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+        const amountClass = isSent ? 'debit' : 'credit';
+        const sign = isSent ? '-' : '+';
+
+        // Format date
+        let timeText = '';
+        if (tx.createdAt) {
+          const date = new Date(tx.createdAt);
+          timeText = date.toLocaleString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+
+        const noteText = tx.note ? ` · ${tx.note}` : '';
+
+        container.innerHTML += `
+          <div class="tx-item">
+            <div class="tx-avatar" style="background:${color}">${initials}</div>
+            <div class="tx-info">
+              <div class="tx-name">${isSent ? 'Paid to ' + displayName : 'Received from ' + displayName}</div>
+              <div class="tx-meta">${timeText}${noteText}</div>
+            </div>
+            <div class="tx-amount ${amountClass}">${sign}₹${Number(tx.amount).toLocaleString('en-IN')}</div>
+          </div>
+        `;
+      });
+    }
+
+    // Filter button clicks
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        renderTransactions(this.dataset.filter);
+      });
+    });
+  </script>
+</body>
+</html>
